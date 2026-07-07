@@ -11,8 +11,6 @@ import { SYMPTOM_MAP } from "@/lib/data/symptoms";
 import PrintButton from "@/components/PrintButton";
 import { ageString } from "@/lib/client";
 
-export const dynamic = "force-dynamic";
-
 interface Log {
   log_date: string;
   food_grams: number | null;

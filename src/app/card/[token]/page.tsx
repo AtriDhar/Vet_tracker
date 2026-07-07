@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 
+// No cookies are read here, so opt out of static prerendering explicitly:
+// the card must always reflect the current DB row.
 export const dynamic = "force-dynamic";
 
 export default async function PublicCard({ params }: { params: Promise<{ token: string }> }) {

@@ -9,8 +9,6 @@ import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 import PrintButton from "@/components/PrintButton";
 
-export const dynamic = "force-dynamic";
-
 export default async function CardPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getSessionUser();
   if (!user) redirect("/login");
