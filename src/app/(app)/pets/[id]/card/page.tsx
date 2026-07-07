@@ -13,9 +13,8 @@ export default async function CardPage({ params }: { params: Promise<{ id: strin
   const user = await getSessionUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const pet = db()
-    .prepare("SELECT * FROM pets WHERE id = ? AND user_id = ?")
-    .get(Number(id), user.id) as Record<string, unknown> | undefined;
+  const d = await db();
+  const pet = await d.get("SELECT * FROM pets WHERE id = ? AND user_id = ?", [Number(id), user.id]);
   if (!pet) notFound();
 
   const h = await headers();

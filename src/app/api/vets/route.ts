@@ -6,8 +6,9 @@ export async function GET(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const emergency = req.nextUrl.searchParams.get("emergency");
-  const rows = emergency
-    ? db().prepare("SELECT * FROM vets WHERE emergency = 1 ORDER BY rating DESC").all()
-    : db().prepare("SELECT * FROM vets ORDER BY emergency DESC, rating DESC").all();
-  return NextResponse.json({ vets: rows });
+  const d = await db();
+  const vets = emergency
+    ? await d.all("SELECT * FROM vets WHERE emergency = 1 ORDER BY rating DESC")
+    : await d.all("SELECT * FROM vets ORDER BY emergency DESC, rating DESC");
+  return NextResponse.json({ vets });
 }

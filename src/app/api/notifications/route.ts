@@ -6,19 +6,23 @@ import { processDueReminders } from "@/lib/service";
 export async function GET() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  processDueReminders(user.id); // lazily materialize due-reminder notifications
-  const rows = db()
-    .prepare("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50")
-    .all(user.id);
-  const unread = db()
-    .prepare("SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND read = 0")
-    .get(user.id) as { c: number };
-  return NextResponse.json({ notifications: rows, unread: unread.c });
+  const d = await db();
+  await processDueReminders(d, user.id); // lazily materialize due-reminder notifications
+  const notifications = await d.all(
+    "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+    [user.id]
+  );
+  const unread = await d.get<{ c: number }>(
+    "SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND read = 0",
+    [user.id]
+  );
+  return NextResponse.json({ notifications, unread: unread?.c ?? 0 });
 }
 
 export async function PATCH() {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  db().prepare("UPDATE notifications SET read = 1 WHERE user_id = ?").run(user.id);
+  const d = await db();
+  await d.run("UPDATE notifications SET read = 1 WHERE user_id = ?", [user.id]);
   return NextResponse.json({ ok: true });
 }

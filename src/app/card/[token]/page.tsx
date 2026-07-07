@@ -11,13 +11,13 @@ export const dynamic = "force-dynamic";
 
 export default async function PublicCard({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const row = db()
-    .prepare(
-      `SELECT p.name, p.species, p.breed, p.sex, p.weight_kg, p.photo, p.notes,
-              u.name AS owner_name, u.phone, u.address
-       FROM pets p JOIN users u ON u.id = p.user_id WHERE p.share_token = ?`
-    )
-    .get(token) as Record<string, string | number | null> | undefined;
+  const d = await db();
+  const row = await d.get<Record<string, string | number | null>>(
+    `SELECT p.name, p.species, p.breed, p.sex, p.weight_kg, p.photo, p.notes,
+            u.name AS owner_name, u.phone, u.address
+     FROM pets p JOIN users u ON u.id = p.user_id WHERE p.share_token = ?`,
+    [token]
+  );
   if (!row) notFound();
 
   return (

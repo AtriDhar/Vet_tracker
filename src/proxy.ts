@@ -4,9 +4,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "vettracker-dev-secret-change-in-production"
-);
+function secret(): Uint8Array {
+  const s = process.env.JWT_SECRET;
+  if (!s && process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET environment variable must be set in production.");
+  }
+  return new TextEncoder().encode(s || "vettracker-dev-secret-change-in-production");
+}
 const COOKIE_NAME = "vt_session";
 
 const PROTECTED = ["/dashboard", "/pets", "/vets", "/appointments", "/vet-portal"];
@@ -17,7 +21,7 @@ export async function proxy(req: NextRequest) {
   let authed = false;
   if (token) {
     try {
-      await jwtVerify(token, SECRET);
+      await jwtVerify(token, secret());
       authed = true;
     } catch {
       authed = false;

@@ -2,10 +2,28 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { db } from "./db";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "vettracker-dev-secret-change-in-production"
-);
+// In production a real JWT_SECRET is mandatory — fail fast at first use
+// rather than silently signing sessions with a public default.
+function secret(): Uint8Array {
+  const s = process.env.JWT_SECRET;
+  if (!s) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("JWT_SECRET environment variable must be set in production.");
+    }
+    return new TextEncoder().encode("vettracker-dev-secret-change-in-production");
+  }
+  return new TextEncoder().encode(s);
+}
+
 export const COOKIE_NAME = "vt_session";
+
+export const COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  path: "/",
+  secure: process.env.NODE_ENV === "production",
+  maxAge: 7 * 86400,
+};
 
 export interface SessionUser {
   id: number;
@@ -22,12 +40,12 @@ export async function signToken(userId: number): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(SECRET);
+    .sign(secret());
 }
 
 export async function verifyToken(token: string): Promise<number | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, secret());
     return typeof payload.uid === "number" ? payload.uid : null;
   } catch {
     return null;
@@ -41,15 +59,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   if (!token) return null;
   const uid = await verifyToken(token);
   if (!uid) return null;
-  const row = db()
-    .prepare("SELECT id, email, name, role, vet_id, phone, address FROM users WHERE id = ?")
-    .get(uid) as SessionUser | undefined;
+  const d = await db();
+  const row = await d.get<SessionUser>(
+    "SELECT id, email, name, role, vet_id, phone, address FROM users WHERE id = ?",
+    [uid]
+  );
   return row ?? null;
-}
-
-/** Guard for API routes: returns the user or throws a Response-shaped error. */
-export async function requireUser(): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user) throw new Error("UNAUTHORIZED");
-  return user;
 }

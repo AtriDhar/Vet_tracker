@@ -34,21 +34,13 @@ export default async function ReportPage({ params }: { params: Promise<{ id: str
   const user = await getSessionUser();
   if (!user) redirect("/login");
   const { id } = await params;
-  const d = db();
-  const pet = d.prepare("SELECT * FROM pets WHERE id = ? AND user_id = ?").get(Number(id), user.id) as
-    | Record<string, unknown>
-    | undefined;
+  const d = await db();
+  const pet = await d.get("SELECT * FROM pets WHERE id = ? AND user_id = ?", [Number(id), user.id]);
   if (!pet) notFound();
 
-  const logs = d
-    .prepare("SELECT * FROM logs WHERE pet_id = ? ORDER BY log_date DESC LIMIT 14")
-    .all(id) as unknown as Log[];
-  const alerts = d
-    .prepare("SELECT * FROM alerts WHERE pet_id = ? ORDER BY created_at DESC LIMIT 10")
-    .all(id) as Array<Record<string, unknown>>;
-  const reminders = d.prepare("SELECT * FROM reminders WHERE pet_id = ? ORDER BY due_date").all(id) as Array<
-    Record<string, unknown>
-  >;
+  const logs = await d.all<Log>("SELECT * FROM logs WHERE pet_id = ? ORDER BY log_date DESC LIMIT 14", [id]);
+  const alerts = await d.all("SELECT * FROM alerts WHERE pet_id = ? ORDER BY created_at DESC LIMIT 10", [id]);
+  const reminders = await d.all("SELECT * FROM reminders WHERE pet_id = ? ORDER BY due_date", [id]);
   const risks = breedRisksFor(pet.species as string, pet.breed as string | null);
 
   const age = ageString(pet.birth_date as string | null);
